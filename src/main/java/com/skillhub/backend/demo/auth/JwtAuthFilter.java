@@ -20,13 +20,7 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Skip filter for CORS preflight
-        return "OPTIONS".equalsIgnoreCase(request.getMethod());
-    }
+    private final UserRepository userRepo;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,25 +29,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String email;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
-        email = jwtService.extractUsername(jwt);
+        final String token = authHeader.substring(7);
+        final String email = jwtService.extractUsername(token);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepository.findByEmail(email).orElse(null);
+            User user = userRepo.findByEmail(email).orElse(null);
 
-            if (user != null && jwtService.isTokenValid(jwt, user)) {
+            if (user != null && jwtService.isTokenValid(token, user)) {
+                // ✅ Use your custom User object directly
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                user, null, user.getAuthorities()
-                        );
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }

@@ -29,6 +29,7 @@ public class AuthService {
                 .whatsapp(request.getWhatsapp())
                 .instagram(request.getInstagram())
                 .profilePic(request.getProfilePic())
+                .gender(request.getGender())
                 .build();
 
         userRepository.save(user);
@@ -36,6 +37,7 @@ public class AuthService {
         var jwt = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())  // ✅ added
                 .token(jwt)
                 .name(user.getName())
                 .profilePic(user.getProfilePic())
@@ -53,6 +55,7 @@ public class AuthService {
         var jwt = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())
                 .token(jwt)
                 .name(user.getName())
                 .profilePic(user.getProfilePic())

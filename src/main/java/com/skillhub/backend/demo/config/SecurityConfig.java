@@ -41,6 +41,7 @@ public class SecurityConfig {
 
                         // Public GETs
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/filter/platform").permitAll()
 
@@ -49,18 +50,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/resources").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/resources/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/resources/**").authenticated()
-
-                        // ✅ Fixed: Proper matchers for rating + saving
                         .requestMatchers("/api/resources/*/rating").authenticated()
                         .requestMatchers("/api/resources/*/save").authenticated()
                         .requestMatchers("/api/resources/*/unsave").authenticated()
                         .requestMatchers("/api/resources/ratings").authenticated()
                         .requestMatchers("/api/resources/saved").authenticated()
-
-                        // All other GETs on resources need auth
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").authenticated()
 
-                        // Everything else requires auth
+                        // Catch-all
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -72,10 +69,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174", "http://localhost:5175"));
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(true); // Required for token in headers/cookies
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

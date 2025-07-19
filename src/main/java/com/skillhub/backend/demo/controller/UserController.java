@@ -1,6 +1,5 @@
 package com.skillhub.backend.demo.controller;
 
-import com.skillhub.backend.demo.auth.JwtService;
 import com.skillhub.backend.demo.dto.OwnerProfileDTO;
 import com.skillhub.backend.demo.dto.UserProfileDTO;
 import com.skillhub.backend.demo.model.User;
@@ -8,7 +7,6 @@ import com.skillhub.backend.demo.repository.ResourceRepository;
 import com.skillhub.backend.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.Principal;
 import java.util.UUID;
 
 @RestController
@@ -25,7 +24,6 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepo;
-    private final JwtService jwtService;
     private final ResourceRepository resourceRepo;
 
     @Value("${upload.path}")
@@ -52,15 +50,19 @@ public class UserController {
         );
     }
 
-    // 👤 Get logged-in user's profile
+    // 👤 Get logged-in user's profile using Principal
     @GetMapping("/me")
-    public UserProfileDTO getMyProfile(@AuthenticationPrincipal User user) {
+    public UserProfileDTO getMyProfile(Principal principal) {
+        String email = principal.getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
         var resources = resourceRepo.findAll()
                 .stream()
                 .filter(r -> r.getOwner().getId().equals(user.getId()))
                 .toList();
 
         UserProfileDTO dto = new UserProfileDTO();
+        dto.setId(user.getId());
         dto.setName(user.getName());
         dto.setWhatsapp(user.getWhatsapp());
         dto.setInstagram(user.getInstagram());
@@ -73,9 +75,12 @@ public class UserController {
 
     // 📝 Update logged-in user's profile
     @PutMapping(value = "/me", consumes = {"multipart/form-data"})
-    public String updateMyProfile(@AuthenticationPrincipal User user,
+    public String updateMyProfile(Principal principal,
                                   @RequestPart("data") UserProfileDTO dto,
                                   @RequestPart(value = "image", required = false) MultipartFile image) throws IOException {
+        String email = principal.getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
         user.setName(dto.getName());
         user.setWhatsapp(dto.getWhatsapp());
         user.setInstagram(dto.getInstagram());
@@ -93,9 +98,12 @@ public class UserController {
         return "Profile updated successfully";
     }
 
-    // ❌ Delete logged-in user's profile picture
+    // ❌ Delete profile picture
     @DeleteMapping("/me/profile-pic")
-    public String deleteProfilePic(@AuthenticationPrincipal User user) {
+    public String deleteProfilePic(Principal principal) {
+        String email = principal.getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
         if (user.getProfilePic() != null) {
             File file = new File(uploadPath + user.getProfilePic());
             if (file.exists()) {
