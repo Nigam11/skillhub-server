@@ -15,7 +15,9 @@ public class SignupRequest {
     private String whatsapp;
     private String instagram;
     private String profilePic;
+    private String gender;
 
-    }
+
+}
 
 
