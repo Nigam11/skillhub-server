@@ -19,16 +19,24 @@ public class AuthService {
     private final EmailService emailService;
 
     public AuthResponse signup(SignupRequest request) {
+        String email = request.getEmail().toLowerCase();
+
+        // Check if email already exists
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Email is already in use");
+        }
+
         Role roleToSet = request.getRole() != null ? request.getRole() : Role.USER;
 
         var user = User.builder()
                 .name(request.getName())
-                .email(request.getEmail())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(roleToSet)
                 .whatsapp(request.getWhatsapp())
                 .instagram(request.getInstagram())
                 .profilePic(request.getProfilePic())
+                .gender(request.getGender())
                 .build();
 
         userRepository.save(user);
@@ -36,6 +44,7 @@ public class AuthService {
         var jwt = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())
                 .token(jwt)
                 .name(user.getName())
                 .profilePic(user.getProfilePic())
@@ -43,7 +52,7 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        var user = userRepository.findByEmail(request.getEmail())
+        var user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -53,6 +62,7 @@ public class AuthService {
         var jwt = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())
                 .token(jwt)
                 .name(user.getName())
                 .profilePic(user.getProfilePic())
@@ -60,7 +70,7 @@ public class AuthService {
     }
 
     public String forgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new RuntimeException("No user with email: " + email));
 
         String token = UUID.randomUUID().toString();
