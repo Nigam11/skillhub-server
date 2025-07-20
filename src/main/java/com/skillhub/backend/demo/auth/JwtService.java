@@ -1,55 +1,56 @@
 package com.skillhub.backend.demo.auth;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
+import com.skillhub.backend.demo.model.User;
+import com.skillhub.backend.demo.repository.UserRepository;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.security.Key;
-import java.util.Date;
-import java.util.function.Function;
+import java.io.IOException;
 
-@Service
-public class JwtService {
+@Component
+@RequiredArgsConstructor
+public class JwtAuthFilter extends OncePerRequestFilter {
 
-    // 🔐 Use a constant secret key (keep it private & safe in production)
-    private static final String SECRET = "my-skillhub-jwt-secret-key-1234567890";
+    private final JwtService jwtService;
+    private final UserRepository userRepo;
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
+            throws ServletException, IOException {
 
-    private static final long EXPIRATION_TIME = 86400000; // 1 day
+        final String authHeader = request.getHeader("Authorization");
 
-    public String generateToken(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(key)
-                .compact();
-    }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, claims -> claims.getSubject());
-    }
+        final String token = authHeader.substring(7);
+        final String email = jwtService.extractUsername(token);
 
-    public <T> T extractClaim(String token, Function<io.jsonwebtoken.Claims, T> claimsResolver) {
-        final var claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return claimsResolver.apply(claims);
-    }
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            User user = userRepo.findByEmail(email).orElse(null);
 
-    // ✅ Updated to accept UserDetails object (required by JwtAuthFilter)
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
+            if (user != null && jwtService.isTokenValid(token, user)) {
+                // ✅ Use your custom User object directly
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
-    public boolean isTokenExpired(String token) {
-        final Date expiration = extractClaim(token, claims -> claims.getExpiration());
-        return expiration.before(new Date());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
     }
 }
