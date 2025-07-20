@@ -1,23 +1,20 @@
-package com.skillhub.backend.demo.config;
+package com.skillhub.backend.demo.controller;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import com.skillhub.backend.demo.auth.EmailService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Paths;
+@RestController
+@RequestMapping("/api/test-email")
+@RequiredArgsConstructor
+@CrossOrigin
+public class EmailTestController {
 
-@Configuration
-public class WebMvcConfig implements WebMvcConfigurer {
+    private final EmailService emailService;
 
-    @Value("${uploads.dir:uploads}") // Default to "uploads" if not set
-    private String uploadsDir;
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String absolutePath = Paths.get(uploadsDir).toAbsolutePath().toUri().toString();
-
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(absolutePath);
+    @PostMapping
+    public String sendTestEmail(@RequestParam String to) {
+        emailService.sendResetEmailAsync(to, "dummy-reset-token-123456");
+        return "Test email sent to: " + to;
     }
 }
