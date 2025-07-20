@@ -73,12 +73,14 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:5175",
-                "https://skillhub-front-eta.vercel.app"
+
+                "https://skillhub-front-eta.vercel.app", // <== Added your Vercel frontend domain here
+                "https://skillhub-front-9sca7dzdn-nigams-projects-44fb152f.vercel.app"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setExposedHeaders(List.of("Authorization"));
-        config.setAllowCredentials(true); // Required for token in headers/cookies
+        config.setAllowCredentials(true); // Allows sending cookies and authorization headers
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
